@@ -1,0 +1,50 @@
+<html>
+  <head>
+    <title>rewrite tests</title>
+    <script src="static/jquery.js"></script>
+    <link rel="stylesheet" 
+      href="static/qunit.css" type="text/css" media="screen" />
+    <script type="text/javascript"
+      src="static/qunit.js"></script>
+    <script type="text/javascript"
+      src="static/rewrite-tests.js"></script>
+    <script>
+$(document).ready(function(){
+routes = 
+'<routes> ' +
+'  <root> server#version </root> ' +
+'  <get path="_uuids"> <to> server#uuids </to> </get> ' +
+'  <get path="_all_dbs"> <to> database#list </to> </get> ' +
+'  <resource name=":database"/>' +
+'  </routes>'
+
+module("version") ;
+asyncTest("Should match couchdb style welcome", function() {
+  $.ajax( {
+    url: "/"
+  , success:  function(d,t,j) { 
+    equals( d, '/resource/server.xqy?action=status', "OK" ); }
+  , error:    function(j,t,e) { ok( false, "NOK" ) }
+  , complete: function()      { start(); } }) }) 
+;
+
+module("_all_dbs") ;
+asyncTest("Includes Default databases", function() {
+  $.ajax( {
+    url: "/_all_dbs"
+  , success:  function(d,t,j) { 
+    equals( d, '/resource/server.xqy?action=status', "OK" ); }
+  , error:    function(j,t,e) { ok( false, "NOK" ) }
+  , complete: function()      { start(); } }) }) 
+;
+}) ; </script>
+  </head>
+  <body>
+    <h1 id="qunit-header">rewrite tests</h1>
+    <h2 id="qunit-banner"></h2>
+    <div id="qunit-testrunner-toolbar"></div>
+    <h2 id="qunit-userAgent"></h2>
+    <ol id="qunit-tests"></ol>
+    <div id="qunit-fixture">test markup, will be hidden</div>
+  </body>
+</html>

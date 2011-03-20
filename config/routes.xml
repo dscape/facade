@@ -1,0 +1,6 @@
+<routes>
+  <root> server#version </root>
+  <get path="_uuids"> <to> server#uuids </to> </get>
+  <get path="_all_dbs"> <to> database#list </to> </get>
+  <resource name=":database"/>
+</routes>
