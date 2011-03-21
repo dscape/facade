@@ -51,7 +51,7 @@ declare function r:selectedRoute( $routesCfg, $url, $method, $defaultCfg ) {
   let $args         := $tokens [2]
   let $static       := fn:replace( fn:replace( r:staticPath(), 
     ":static",      r:staticDirectory() ),
-    ":remainder", fn:replace( $route, "^/", "" ) )
+    ":remainder", fn:replace( $route, "^/", "" ) )  
   return
     if ( r:fileExists( $static ) )
     then $static else

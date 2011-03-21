@@ -1,5 +1,5 @@
 declare variable $params external ;
 
 fn:string(
-  <txt> {{"couchdb":"Welcome","version":"{$params}"}} </txt>
+  <v>{{"couchdb":"Welcome","version":"{$params}"}}&#x0a;</v>
 )
