@@ -23,9 +23,12 @@ asyncTest("Should match couchdb style welcome", function() {
   $.ajax( {
     url: "/"
   , success:  function(d,t,j) { 
-    equals( d, '/resource/server.xqy?action=status', "OK" ); }
+    r = JSON.parse(d);
+    expect( 2 );
+    equals( r.couchdb, 'Welcome', "OK" );
+    ok( r.version > '1', "OK") }
   , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) 
+  , complete: function()      { start(); } }) })
 ;
 
 module("_all_dbs") ;
