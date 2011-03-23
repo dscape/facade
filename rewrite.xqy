@@ -9,5 +9,5 @@ declare variable $routesCfg := local:documentGet( "config/routes.xml" ) ;
 
 let $r :=
   r:selectedRoute( $routesCfg/routes )
-  let $_ := xdmp:log ($r)
+  let $_ := xdmp:log ($r) 
   return $r

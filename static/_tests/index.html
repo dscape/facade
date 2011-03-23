@@ -24,19 +24,51 @@ asyncTest("Should match couchdb style welcome", function() {
     url: "/"
   , success:  function(d,t,j) { 
     r = JSON.parse(d);
-    expect( 2 );
-    equals( r.couchdb, 'Welcome', "OK" );
-    ok( r.version > '1', "OK") }
+    equals( r.couchdb, 'Welcome', "Includes Welcome" );
+    ok( r.version > '1', "Version is greater than one") }
   , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) })
-;
+  , complete: function()      { start(); } }) }) ;
+
+module("_uuids") ;
+asyncTest("Should be able to request single uuid", function() {
+  $.ajax( {
+    url: "/_uuids"
+  , success:  function(d,t,j) { 
+    r = JSON.parse(d);
+    ok( r[0], "Contains one uuid" );
+    ok( !r[1], "But no more than one uuid" ); }
+  , error:    function(j,t,e) { ok( false, "NOK" ) }
+  , complete: function()      { start(); } }) }) ;
+asyncTest("Should be able to request empty uuids", function() {
+  $.ajax( {
+    url: "/_uuids?count=0"
+  , success:  function(d,t,j) { 
+    r = JSON.parse(d);
+    ok( !r[0], "It's an empty array" ); }
+  , error:    function(j,t,e) { ok( false, "NOK" ) }
+  , complete: function()      { start(); } }) }) ;
+asyncTest("Should be able to request multiple uuids", function() {
+  $.ajax( {
+    url: "/_uuids?count=10"
+  , success:  function(d,t,j) { 
+    r = JSON.parse(d);
+    ok( r[0], "Contains one uuid" );
+    ok( r[9], "Contains ten uuids" );
+    ok( !r[10], "But not eleven uuids" ); }
+  , error:    function(j,t,e) { ok( false, "NOK" ) }
+  , complete: function()      { start(); } }) }) ;
 
 module("_all_dbs") ;
 asyncTest("Includes Default databases", function() {
   $.ajax( {
     url: "/_all_dbs"
   , success:  function(d,t,j) { 
-    equals( d, '/resource/server.xqy?action=status', "OK" ); }
+    r = JSON.parse(d);
+    ok( r.indexOf('"Documents"') === -1, "Contains Documents" );
+    ok( r.indexOf('"Security"') === -1, "Contains Security" );
+    ok( r.indexOf('"Schemas"') === -1, "Contains Schema" );
+    ok( r.indexOf('"Triggers"') === -1, "Contains Triggers" );
+    ok( r.indexOf('"Modules"') === -1, "Contains Modules" ); }
   , error:    function(j,t,e) { ok( false, "NOK" ) }
   , complete: function()      { start(); } }) }) 
 ;

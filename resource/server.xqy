@@ -7,9 +7,8 @@ declare function local:version() {
   mvc:mustRevalidateCache(), mvc:render( 'server-version', 
     server:version() )  } ;
 
-declare function local:uuids() {
-  let $c := xdmp:get-request-field( "count", "1" )
-  return ( mvc:noCache(), mvc:render( 'server-uuids',
-    server:uuids( $c ) ) ) } ;
+declare function local:uuids() { ( 
+  mvc:noCache(), mvc:render( 'json-list',
+    server:uuids( xdmp:get-request-field( "count", "1" ) ) ) ) } ;
 
 xdmp:apply( mvc:function() )
