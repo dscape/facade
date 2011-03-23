@@ -72,6 +72,18 @@ asyncTest("Includes Default databases", function() {
   , error:    function(j,t,e) { ok( false, "NOK" ) }
   , complete: function()      { start(); } }) }) 
 ;
+module("Database") ;
+asyncTest("Create a database with a bad name", function() {
+  $.ajax( {
+    url: "/BadName"
+  , type: 'PUT'
+  , success:  function(d,t,j) { ok( false, "Should return 400" ) }
+  , error:    function(j,t,e) { 
+    ok( true, "Should return an error" )
+    // Continue with checks 
+    }
+  , complete: function()      { start(); } }) }) 
+;
 }) ; </script>
   </head>
   <body>
