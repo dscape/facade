@@ -70,13 +70,12 @@ asyncTest("Includes Default databases", function() {
     r = JSON.parse(d);
     equals( j.status, 200, "HTTP 200");
     ok( r.indexOf('"Documents"') === -1, "Contains Documents" );
-    ok( r.indexOf('"Security"') === -1, "Contains Security" );
-    ok( r.indexOf('"Schemas"') === -1, "Contains Schema" );
-    ok( r.indexOf('"Triggers"') === -1, "Contains Triggers" );
-    ok( r.indexOf('"Modules"') === -1, "Contains Modules" ); }
+    ok( r.indexOf('"Security"')  === -1, "Contains Security" );
+    ok( r.indexOf('"Schemas"')   === -1, "Contains Schema" );
+    ok( r.indexOf('"Triggers"')  === -1, "Contains Triggers" );
+    ok( r.indexOf('"Modules"')   === -1, "Contains Modules" ); }
   , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) 
-;
+  , complete: function()      { start(); } }) }) ;
 module("Database") ;
 asyncTest("Create a database with a bad name", function() {
   $.ajax( {
@@ -91,10 +90,31 @@ asyncTest("Create a database with a bad name", function() {
     equals( j.status, 400, "Should return 400");
     equals( r.error, "illegal_database_name", "Error should be illegal database name" );
     ok( r.reason, "There should be a reason");
-    // Continue with checks 
     }
-  , complete: function()      { start(); } }) }) 
-;
+  , complete: function()      { start(); } }) }) ;
+asyncTest("Delete facade database", function() {
+  $.ajax( {
+    url: "/facade"
+  , type: 'DELETE'
+  , success:  function(d,t,j) { ok( false, "Database shouldn't exist" ) }
+  , error:    function(j,t,e) { 
+    r = JSON.parse(j.responseText)
+    ok( true, "Should return an error" );
+    equals( j.status, 404, "Should return 404");
+    equals( r.error, "not_found", 
+      "Database error should be not found" );
+    asyncTest("Create the facade database", function() {
+      $.ajax( {
+        url: "/facade"
+      , type: 'PUT'
+      , success:  function(d,t,j) { 
+        r = JSON.parse(d);
+        equals( j.status, 200, "HTTP Code should be 200");
+        ok( r.ok, "Request should be ok" ); }
+      , error:    function(j,t,e) { ok( false, "NOK" ) }
+      , complete: function()      { start(); } }) }) ; }
+  , complete: function()      { start(); } }) }) ;
+
 }) ; </script>
   </head>
   <body>

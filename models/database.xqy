@@ -20,7 +20,7 @@ declare function db:create( $database ) {
   else 
     let $db := 
       try { info:database-create( $database ) }
-      catch ( $e ) { db:error( map:get( $m, '500' ) ) }
+      catch ( $e ) { xdmp:log($e), db:error( map:get( $m, '500' ) ) }
     return 
       if ( $db castable as xs:integer ) then <ok/> 
       else db:error( map:get( $m, '500' ) )
@@ -50,10 +50,11 @@ declare function db:delete( $database ) {
       return <ok/>
   else db:error( map:get( $m, '404' ) ) };
 
-declare function db:list() { 
-  fn:string-join( xdmp:database-name( xdmp:databases() ), "," ) } ;
+declare function db:list() { fn:string-join( db:_list(), "," ) } ;
 
-declare function db:exists ( $database ){ db:list() [ . = $database ] } ;
+declare function db:_list() { xdmp:database-name( xdmp:databases() ) } ;
+
+declare function db:exists ( $database ){ db:_list() [ . = $database ] } ;
 
 declare function db:validName( $database ) { 
   fn:matches( $database, '^[a-z]([a-z]|[0-9]|_|-)*$' ) } ;
