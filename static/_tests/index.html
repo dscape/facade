@@ -110,11 +110,22 @@ asyncTest("Delete facade database", function() {
       , success:  function(d,t,j) { 
         r = JSON.parse(d);
         equals( j.status, 200, "HTTP Code should be 200");
-        ok( r.ok, "Request should be ok" ); }
+        asyncTest("Delete the database facade should now be ok", function() {
+          $.ajax( {
+            url: "/facade"
+          , type: 'DELETE'
+          , success:  function(d,t,j) { 
+            r = JSON.parse(d);
+            equals( j.status, 200, "HTTP Code should be 200");
+            ok( r.ok, "Delete should be ok" ) }
+          , error:    function(j,t,e) { 
+            ok(false, "Couldn't delete database") }
+          , complete: function()      { start(); } }) }) ;
+        ok( r.ok, "Request should be ok" );
+         }
       , error:    function(j,t,e) { ok( false, "NOK" ) }
       , complete: function()      { start(); } }) }) ; }
   , complete: function()      { start(); } }) }) ;
-
 }) ; </script>
   </head>
   <body>
