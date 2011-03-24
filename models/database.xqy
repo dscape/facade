@@ -4,6 +4,22 @@ module namespace db = "model:database";
 import module namespace info="http://marklogic.com/appservices/infostudio" 
   at "/MarkLogic/appservices/infostudio/info.xqy";
 
+declare function db:list() { xdmp:to-json( db:_list() ) } ;
+
+declare function db:_list() { xdmp:database-name( xdmp:databases() ) } ;
+
+declare function db:exists ( $database ){ db:_list() [ . = $database ] } ;
+
+declare function db:validName( $database ) { 
+  fn:matches( $database, '^[a-z]([a-z]|[0-9]|_|-)*$' ) } ;
+
+declare function db:error( $l ) { xdmp:set-response-code( $l[1], $l[2] ),
+  document { <e> <id> {$l[3]} </id> { $l[4] } </e> } };
+
+declare function db:documents( $database, $limit, $startKey, $endKey, 
+  $descending, $includeDocs ) {
+  ('buh') };
+
 declare function db:create( $database ) { 
   let $m := map:map()
   let $_ := map:put( $m, '412', ( 412, 'Pre-condicion failed', 'file_exists',
@@ -32,7 +48,22 @@ declare function db:database( $database ) {
     'Database does not exist.' ) )
   return
     if ( db:exists ( $database ) )
-    then 'not yet'
+    then 
+      let $db     := xdmp:read-cluster-config-file("databases.xml") 
+        //*:database [ *:database-name = $database ] 
+      let $forestCounts := 
+        for $id in $db//*:forest-id
+        return xdmp:forest-counts(xs:unsignedLong($id))
+      let $forestStatus := 
+        for $id in $db//*:forest-id
+        return xdmp:forest-status(xs:unsignedLong($id))
+      let $activeCount := fn:sum( $forestCounts//*:document-count)
+      let $deletedCount := fn:sum( $forestCounts//*:deleted-fragment-count)
+      let $updateSeq    := xdmp:request-timestamp() 
+      let $merging      := 
+        some $f in $forestStatus//*:merges satisfies $f/node()
+      return xdmp:to-json(
+        ( $database, $activeCount, $deletedCount, $merging, $updateSeq ) )
     else db:error( map:get( $m, '404' ) ) };
 
 declare function db:delete( $database ) {
@@ -49,15 +80,3 @@ declare function db:delete( $database ) {
         catch ( $e ) { db:error( map:get( $m, '500' ) ) }
       return <ok/>
   else db:error( map:get( $m, '404' ) ) };
-
-declare function db:list() { fn:string-join( db:_list(), "," ) } ;
-
-declare function db:_list() { xdmp:database-name( xdmp:databases() ) } ;
-
-declare function db:exists ( $database ){ db:_list() [ . = $database ] } ;
-
-declare function db:validName( $database ) { 
-  fn:matches( $database, '^[a-z]([a-z]|[0-9]|_|-)*$' ) } ;
-
-declare function db:error( $l ) { xdmp:set-response-code( $l[1], $l[2] ),
-  document { <e> <id> {$l[3]} </id> { $l[4] } </e> } };

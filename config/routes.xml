@@ -2,5 +2,8 @@
   <root> server#version </root>
   <get path="_uuids"> <to> server#uuids </to> </get>
   <get path="_all_dbs"> <to> database#list </to> </get>
-  <resource name=":database"/>
+  <resource name=":database">
+    <member action="_all_docs"/>
+    <resource name=":document"/>
+  </resource>
 </routes>

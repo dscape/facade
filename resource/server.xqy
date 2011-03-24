@@ -8,7 +8,7 @@ declare function local:version() {
     server:version() )  } ;
 
 declare function local:uuids() { ( 
-  mvc:noCache(), mvc:render( 'json-list',
-    server:uuids( xdmp:get-request-field( "count", "1" ) ) ) ) } ;
+  mvc:noCache(), mvc:render( 'uuids',
+    server:uuids( xdmp:get-request-field( "count", "1" ) [1] ) ) ) } ;
 
 xdmp:apply( mvc:function() )

@@ -77,6 +77,18 @@ asyncTest("Includes Default databases", function() {
   , error:    function(j,t,e) { ok( false, "NOK" ) }
   , complete: function()      { start(); } }) }) ;
 module("Database") ;
+asyncTest("Includes Default databases", function() {
+  $.ajax( {
+    url: "/Security"
+  , success:  function(d,t,j) { 
+    r = JSON.parse(d);
+    equals( j.status, 200, "HTTP 200");
+    equals( r.db_name, "Security", "Security is the database name" );
+    ok( r.doc_count > 1, "Security contains documents" ); 
+    ok( r.disk_size > -1, "Futon doesn't work without disk_size" ); 
+    ok( r.update_seq, "Futon doesn't work without update_seq" ); }
+  , error:    function(j,t,e) { ok( false, "NOK" ) }
+  , complete: function()      { start(); } }) }) ;
 asyncTest("Create a database with a bad name", function() {
   $.ajax( {
     url: "/BadName"
