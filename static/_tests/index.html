@@ -24,6 +24,7 @@ asyncTest("Should match couchdb style welcome", function() {
     url: "/"
   , success:  function(d,t,j) { 
     r = JSON.parse(d);
+    equals( j.status, 200, "HTTP 200");
     equals( r.couchdb, 'Welcome', "Includes Welcome" );
     ok( r.version > '1', "Version is greater than one") }
   , error:    function(j,t,e) { ok( false, "NOK" ) }
@@ -35,6 +36,7 @@ asyncTest("Should be able to request single uuid", function() {
     url: "/_uuids"
   , success:  function(d,t,j) { 
     r = JSON.parse(d);
+    equals( j.status, 200, "HTTP 200");
     ok( r[0], "Contains one uuid" );
     ok( !r[1], "But no more than one uuid" ); }
   , error:    function(j,t,e) { ok( false, "NOK" ) }
@@ -44,6 +46,7 @@ asyncTest("Should be able to request empty uuids", function() {
     url: "/_uuids?count=0"
   , success:  function(d,t,j) { 
     r = JSON.parse(d);
+    equals( j.status, 200, "HTTP 200");
     ok( !r[0], "It's an empty array" ); }
   , error:    function(j,t,e) { ok( false, "NOK" ) }
   , complete: function()      { start(); } }) }) ;
@@ -52,6 +55,7 @@ asyncTest("Should be able to request multiple uuids", function() {
     url: "/_uuids?count=10"
   , success:  function(d,t,j) { 
     r = JSON.parse(d);
+    equals( j.status, 200, "HTTP 200");
     ok( r[0], "Contains one uuid" );
     ok( r[9], "Contains ten uuids" );
     ok( !r[10], "But not eleven uuids" ); }
@@ -64,6 +68,7 @@ asyncTest("Includes Default databases", function() {
     url: "/_all_dbs"
   , success:  function(d,t,j) { 
     r = JSON.parse(d);
+    equals( j.status, 200, "HTTP 200");
     ok( r.indexOf('"Documents"') === -1, "Contains Documents" );
     ok( r.indexOf('"Security"') === -1, "Contains Security" );
     ok( r.indexOf('"Schemas"') === -1, "Contains Schema" );
@@ -77,9 +82,15 @@ asyncTest("Create a database with a bad name", function() {
   $.ajax( {
     url: "/BadName"
   , type: 'PUT'
-  , success:  function(d,t,j) { ok( false, "Should return 400" ) }
+  , success:  function(d,t,j) { 
+    equals( j.status, 400, "HTTP Code should be 400");
+    ok( false, "Should fail" ) }
   , error:    function(j,t,e) { 
-    ok( true, "Should return an error" )
+    r = JSON.parse(j.responseText)
+    ok( true, "Should return an error" );
+    equals( j.status, 400, "Should return 400");
+    equals( r.error, "illegal_database_name", "Error should be illegal database name" );
+    ok( r.reason, "There should be a reason");
     // Continue with checks 
     }
   , complete: function()      { start(); } }) }) 
