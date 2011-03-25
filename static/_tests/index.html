@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>rewrite tests</title>
+    <title>facade tests</title>
     <script src="static/jquery.js"></script>
     <link rel="stylesheet" 
       href="static/qunit.css" type="text/css" media="screen" />
@@ -8,137 +8,302 @@
       src="static/qunit.js"></script>
     <script type="text/javascript"
       src="static/rewrite-tests.js"></script>
+    <script>  </script>
     <script>
-$(document).ready(function(){
-routes = 
-'<routes> ' +
-'  <root> server#version </root> ' +
-'  <get path="_uuids"> <to> server#uuids </to> </get> ' +
-'  <get path="_all_dbs"> <to> database#list </to> </get> ' +
-'  <resource name=":database"/>' +
-'  </routes>'
+$(document).ready(
+  $.ajax( { url: "/staging", type: 'DELETE', complete: 
+  function() {
+  routes =
+  '<routes> ' +
+  '  <root> server#version </root> ' +
+  '  <get path="_uuids"> <to> server#uuids </to> </get> ' +
+  '  <get path="_all_dbs"> <to> database#list </to> </get> ' +
+  '  <resource name=":database"/>' +
+  '  </routes>'
 
-module("version") ;
-asyncTest("Should match couchdb style welcome", function() {
-  $.ajax( {
-    url: "/"
-  , success:  function(d,t,j) { 
-    r = JSON.parse(d);
-    equals( j.status, 200, "HTTP 200");
-    equals( r.couchdb, 'Welcome', "Includes Welcome" );
-    ok( r.version > '1', "Version is greater than one") }
-  , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) ;
-
-module("_uuids") ;
-asyncTest("Should be able to request single uuid", function() {
-  $.ajax( {
-    url: "/_uuids"
-  , success:  function(d,t,j) { 
-    r = JSON.parse(d);
-    equals( j.status, 200, "HTTP 200");
-    ok( r[0], "Contains one uuid" );
-    ok( !r[1], "But no more than one uuid" ); }
-  , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) ;
-asyncTest("Should be able to request empty uuids", function() {
-  $.ajax( {
-    url: "/_uuids?count=0"
-  , success:  function(d,t,j) { 
-    r = JSON.parse(d);
-    equals( j.status, 200, "HTTP 200");
-    ok( !r[0], "It's an empty array" ); }
-  , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) ;
-asyncTest("Should be able to request multiple uuids", function() {
-  $.ajax( {
-    url: "/_uuids?count=10"
-  , success:  function(d,t,j) { 
-    r = JSON.parse(d);
-    equals( j.status, 200, "HTTP 200");
-    ok( r[0], "Contains one uuid" );
-    ok( r[9], "Contains ten uuids" );
-    ok( !r[10], "But not eleven uuids" ); }
-  , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) ;
-
-module("_all_dbs") ;
-asyncTest("Includes Default databases", function() {
-  $.ajax( {
-    url: "/_all_dbs"
-  , success:  function(d,t,j) { 
-    r = JSON.parse(d);
-    equals( j.status, 200, "HTTP 200");
-    ok( r.indexOf('"Documents"') === -1, "Contains Documents" );
-    ok( r.indexOf('"Security"')  === -1, "Contains Security" );
-    ok( r.indexOf('"Schemas"')   === -1, "Contains Schema" );
-    ok( r.indexOf('"Triggers"')  === -1, "Contains Triggers" );
-    ok( r.indexOf('"Modules"')   === -1, "Contains Modules" ); }
-  , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) ;
-module("Database") ;
-asyncTest("Includes Default databases", function() {
-  $.ajax( {
-    url: "/Security"
-  , success:  function(d,t,j) { 
-    r = JSON.parse(d);
-    equals( j.status, 200, "HTTP 200");
-    equals( r.db_name, "Security", "Security is the database name" );
-    ok( r.doc_count > 1, "Security contains documents" ); 
-    ok( r.disk_size > -1, "Futon doesn't work without disk_size" ); 
-    ok( r.update_seq, "Futon doesn't work without update_seq" ); }
-  , error:    function(j,t,e) { ok( false, "NOK" ) }
-  , complete: function()      { start(); } }) }) ;
-asyncTest("Create a database with a bad name", function() {
-  $.ajax( {
-    url: "/BadName"
-  , type: 'PUT'
-  , success:  function(d,t,j) { 
-    equals( j.status, 400, "HTTP Code should be 400");
-    ok( false, "Should fail" ) }
-  , error:    function(j,t,e) { 
-    r = JSON.parse(j.responseText)
-    ok( true, "Should return an error" );
-    equals( j.status, 400, "Should return 400");
-    equals( r.error, "illegal_database_name", "Error should be illegal database name" );
-    ok( r.reason, "There should be a reason");
-    }
-  , complete: function()      { start(); } }) }) ;
-asyncTest("Delete facade database", function() {
-  $.ajax( {
-    url: "/facade"
-  , type: 'DELETE'
-  , success:  function(d,t,j) { ok( false, "Database shouldn't exist" ) }
-  , error:    function(j,t,e) { 
-    r = JSON.parse(j.responseText)
-    ok( true, "Should return an error" );
-    equals( j.status, 404, "Should return 404");
-    equals( r.error, "not_found", 
-      "Database error should be not found" );
-    asyncTest("Create the facade database", function() {
-      $.ajax( {
-        url: "/facade"
-      , type: 'PUT'
-      , success:  function(d,t,j) { 
+  module("version");
+  asyncTest("Should match couchdb style welcome",
+  function() {
+    $.ajax({
+      url: "/"
+      ,
+      success: function(d, t, j) {
         r = JSON.parse(d);
-        equals( j.status, 200, "HTTP Code should be 200");
-        asyncTest("Delete the database facade should now be ok", function() {
-          $.ajax( {
+        equals(j.status, 200, "HTTP 200");
+        equals(r.couchdb, 'Welcome', "Includes Welcome");
+        ok(r.version > '1', "Version is greater than one")
+      }
+      ,
+      error: function(j, t, e) {
+        ok(false, "NOK")
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+
+  module("_uuids");
+  asyncTest("Should be able to request single uuid",
+  function() {
+    $.ajax({
+      url: "/_uuids"
+      ,
+      success: function(d, t, j) {
+        r = JSON.parse(d).uuids;
+        equals(j.status, 200, "HTTP 200");
+        ok(r[0], "Contains one uuid");
+        ok(!r[1], "But no more than one uuid");
+      }
+      ,
+      error: function(j, t, e) {
+        ok(false, "NOK")
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+  asyncTest("Should be able to request empty uuids",
+  function() {
+    $.ajax({
+      url: "/_uuids?count=0"
+      ,
+      success: function(d, t, j) {
+        r = JSON.parse(d).uuids;
+        equals(j.status, 200, "HTTP 200");
+        ok(!r[0], "It's an empty array");
+      }
+      ,
+      error: function(j, t, e) {
+        ok(false, "NOK")
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+  asyncTest("Should be able to request multiple uuids",
+  function() {
+    $.ajax({
+      url: "/_uuids?count=10"
+      ,
+      success: function(d, t, j) {
+        r = JSON.parse(d).uuids;
+        equals(j.status, 200, "HTTP 200");
+        ok(r[0], "Contains one uuid");
+        ok(r[9], "Contains ten uuids");
+        ok(!r[10], "But not eleven uuids");
+      }
+      ,
+      error: function(j, t, e) {
+        ok(false, "NOK")
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+
+  module("_all_dbs");
+  asyncTest("Includes Default databases",
+  function() {
+    $.ajax({
+      url: "/_all_dbs"
+      ,
+      success: function(d, t, j) {
+        r = JSON.parse(d);
+        equals(j.status, 200, "HTTP 200");
+        ok(r.indexOf('"Documents"') === -1, "Contains Documents");
+        ok(r.indexOf('"Security"') === -1, "Contains Security");
+        ok(r.indexOf('"Schemas"') === -1, "Contains Schema");
+        ok(r.indexOf('"Triggers"') === -1, "Contains Triggers");
+        ok(r.indexOf('"Modules"') === -1, "Contains Modules");
+      }
+      ,
+      error: function(j, t, e) {
+        ok(false, "NOK")
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+module("documents");
+asyncTest("Create staging database",
+function() {
+  $.ajax({
+    url: "/staging"
+    ,
+    type: 'PUT'
+    ,
+    success: function(d, t, j) {
+      r = JSON.parse(d);
+      equals(j.status, 201, "HTTP Code should be 201");
+      asyncTest("Shouldn't accept JSON arrays",
+      function() {
+        $.ajax({
+          url: "/staging/one"
+          ,
+          type: "PUT"
+          ,
+          data: "[]"
+          ,
+          success: function(d, t, j) {
+            ok(false, "NOK");
+          }
+          ,
+          error: function(j, t, e) {
+            r = JSON.parse(j.responseText);
+            ok(true, "Should return an error");
+            equals(j.status, 400, "Should return 400");
+            equals(r.error, "bad_request", "Error bad_request");
+            ok(r.reason, "There should be a reason");
+          }
+          ,
+          complete: function() {
+            start();
+          }
+        })
+      });
+      ok(r.ok, "Request should be ok");
+    }
+    ,
+    error: function(j, t, e) {
+      ok(false, "NOK")
+    }
+    ,
+    complete: function() {
+      start();
+    }
+  })
+});
+  
+  module("Database");
+  asyncTest("Get Security Database",
+  function() {
+    $.ajax({
+      url: "/Security"
+      ,
+      success: function(d, t, j) {
+        r = JSON.parse(d);
+        equals(j.status, 200, "HTTP 200");
+        equals(r.db_name, "Security", "Security is the database name");
+        ok(r.doc_count > 1, "Security contains documents");
+        ok(r.disk_size > -1, "Futon doesn't work without disk_size");
+        ok(r.update_seq, "Futon doesn't work without update_seq");
+      }
+      ,
+      error: function(j, t, e) {
+        ok(false, "NOK")
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+  asyncTest("Create a database with a bad name",
+  function() {
+    $.ajax({
+      url: "/BadName"
+      ,
+      type: 'PUT'
+      ,
+      success: function(d, t, j) {
+        equals(j.status, 400, "HTTP Code should be 400");
+        ok(false, "Should fail")
+      }
+      ,
+      error: function(j, t, e) {
+        r = JSON.parse(j.responseText)
+        ok(true, "Should return an error");
+        equals(j.status, 400, "Should return 400");
+        equals(r.error, "illegal_database_name", "Error should be illegal database name");
+        ok(r.reason, "There should be a reason");
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+  asyncTest("Delete facade database",
+  function() {
+    $.ajax({
+      url: "/facade"
+      ,
+      type: 'DELETE'
+      ,
+      success: function(d, t, j) {
+        ok(false, "Database shouldn't exist")
+      }
+      ,
+      error: function(j, t, e) {
+        r = JSON.parse(j.responseText)
+        ok(true, "Should return an error");
+        equals(j.status, 404, "Should return 404");
+        equals(r.error, "not_found",
+        "Database error should be not found");
+        asyncTest("Create the facade database",
+        function() {
+          $.ajax({
             url: "/facade"
-          , type: 'DELETE'
-          , success:  function(d,t,j) { 
-            r = JSON.parse(d);
-            equals( j.status, 200, "HTTP Code should be 200");
-            ok( r.ok, "Delete should be ok" ) }
-          , error:    function(j,t,e) { 
-            ok(false, "Couldn't delete database") }
-          , complete: function()      { start(); } }) }) ;
-        ok( r.ok, "Request should be ok" );
-         }
-      , error:    function(j,t,e) { ok( false, "NOK" ) }
-      , complete: function()      { start(); } }) }) ; }
-  , complete: function()      { start(); } }) }) ;
-}) ; </script>
+            ,
+            type: 'PUT'
+            ,
+            success: function(d, t, j) {
+              r = JSON.parse(d);
+              equals(j.status, 201, "HTTP Code should be 201");
+              asyncTest("Delete the database facade should now be ok",
+              function() {
+                $.ajax({
+                  url: "/facade"
+                  ,
+                  type: 'DELETE'
+                  ,
+                  success: function(d, t, j) {
+                    r = JSON.parse(d);
+                    equals(j.status, 200, "HTTP Code should be 200");
+                    ok(r.ok, "Delete should be ok")
+                  }
+                  ,
+                  error: function(j, t, e) {
+                    ok(false, "Couldn't delete database")
+                  }
+                  ,
+                  complete: function() {
+                    start();
+                  }
+                })
+              });
+              ok(r.ok, "Request should be ok");
+            }
+            ,
+            error: function(j, t, e) {
+              ok(false, "NOK")
+            }
+            ,
+            complete: function() {
+              start();
+            }
+          })
+        });
+      }
+      ,
+      complete: function() {
+        start();
+      }
+    })
+  });
+}} ));
+
+</script>
   </head>
   <body>
     <h1 id="qunit-header">rewrite tests</h1>

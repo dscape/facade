@@ -77,6 +77,9 @@ declare function h:function() {
 declare function h:function( $name ) {
   xdmp:function( xs:QName( fn:concat( "local:", $name ) ) ) } ;
 
+declare function h:errorFor( $l ) { xdmp:set-response-code( $l[1], $l[2] ),
+  document { <e> <id> { $l[3] } </id> { $l[4] } </e> } };
+
 declare function h:error ( $e ) { 
   if ( $e//*:code = 'XDMP-UNDFUN' )
   then h:error( 404, 'Not Found' )

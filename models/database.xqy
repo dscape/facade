@@ -1,6 +1,7 @@
 xquery version "1.0-ml";
 module namespace db = "model:database";
 
+import module namespace h    = "helper.xqy" at "/lib/rewrite/helper.xqy" ;
 import module namespace info="http://marklogic.com/appservices/infostudio" 
   at "/MarkLogic/appservices/infostudio/info.xqy";
 
@@ -12,9 +13,6 @@ declare function db:exists ( $database ){ db:_list() [ . = $database ] } ;
 
 declare function db:validName( $database ) { 
   fn:matches( $database, '^[a-z]([a-z]|[0-9]|_|-)*$' ) } ;
-
-declare function db:error( $l ) { xdmp:set-response-code( $l[1], $l[2] ),
-  document { <e> <id> {$l[3]} </id> { $l[4] } </e> } };
 
 declare function db:documents( $database, $limit, $startKey, $endKey, 
   $descending, $includeDocs ) {
@@ -32,15 +30,15 @@ declare function db:create( $database ) {
   return
   if ( db:validName( $database ) )
   then if ( db:exists ( $database ) )
-  then db:error( map:get( $m, '412' ) )
+  then h:errorFor( map:get( $m, '412' ) )
   else 
     let $db := 
       try { info:database-create( $database ) }
-      catch ( $e ) { xdmp:log($e), db:error( map:get( $m, '500' ) ) }
+      catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) }
     return 
       if ( $db castable as xs:integer ) then <ok/> 
-      else db:error( map:get( $m, '500' ) )
-   else db:error( map:get( $m, '400' ) ) } ;
+      else h:errorFor( map:get( $m, '500' ) )
+   else h:errorFor( map:get( $m, '400' ) ) } ;
 
 declare function db:database( $database ) {
   let $m := map:map()
@@ -64,7 +62,7 @@ declare function db:database( $database ) {
         some $f in $forestStatus//*:merges satisfies $f/node()
       return xdmp:to-json(
         ( $database, $activeCount, $deletedCount, $merging, $updateSeq ) )
-    else db:error( map:get( $m, '404' ) ) };
+    else h:errorFor( map:get( $m, '404' ) ) };
 
 declare function db:delete( $database ) {
   let $m := map:map()
@@ -77,6 +75,6 @@ declare function db:delete( $database ) {
     then 
       let $db := 
         try { info:database-delete( $database ) }
-        catch ( $e ) { db:error( map:get( $m, '500' ) ) }
+        catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) }
       return <ok/>
-  else db:error( map:get( $m, '404' ) ) };
+  else h:errorFor( map:get( $m, '404' ) ) };
