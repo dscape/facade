@@ -11,7 +11,8 @@
     <script>  </script>
     <script>
 $(document).ready(
-  $.ajax( { url: "/staging", type: 'DELETE', complete: 
+  $.ajax( { url: "/staging", type: 'DELETE', 
+  async: false, complete: 
   function() {
   routes =
   '<routes> ' +
@@ -145,14 +146,14 @@ function() {
     success: function(d, t, j) {
       r = JSON.parse(d);
       equals(j.status, 201, "HTTP Code should be 201");
-      asyncTest("Shouldn't accept JSON arrays",
+      asyncTest("Should't accept _i as key",
       function() {
         $.ajax({
           url: "/staging/one"
           ,
           type: "PUT"
           ,
-          data: "[]"
+          data: '{"_i": false}'
           ,
           success: function(d, t, j) {
             ok(false, "NOK");
@@ -161,8 +162,8 @@ function() {
           error: function(j, t, e) {
             r = JSON.parse(j.responseText);
             ok(true, "Should return an error");
-            equals(j.status, 400, "Should return 400");
-            equals(r.error, "bad_request", "Error bad_request");
+            equals(j.status, 500, "Should return 500");
+            equals(r.error, "doc_validation", "Error doc_validation");
             ok(r.reason, "There should be a reason");
           }
           ,
@@ -306,7 +307,7 @@ function() {
 </script>
   </head>
   <body>
-    <h1 id="qunit-header">rewrite tests</h1>
+    <h1 id="qunit-header">facade tests</h1>
     <h2 id="qunit-banner"></h2>
     <div id="qunit-testrunner-toolbar"></div>
     <h2 id="qunit-userAgent"></h2>

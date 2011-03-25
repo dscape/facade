@@ -1,9 +1,16 @@
 xquery version "1.0-ml";
 module namespace db = "model:database";
 
+import module namespace admin = "http://marklogic.com/xdmp/admin" 
+  at "/MarkLogic/admin.xqy";
+import module namespace dls = "http://marklogic.com/xdmp/dls" 
+  at "/MarkLogic/dls.xqy";
+
 import module namespace h    = "helper.xqy" at "/lib/rewrite/helper.xqy" ;
 import module namespace info="http://marklogic.com/appservices/infostudio" 
   at "/MarkLogic/appservices/infostudio/info.xqy";
+
+declare variable $couchBase := '/_couchBase/' ;
 
 declare function db:list() { xdmp:to-json( db:_list() ) } ;
 
@@ -16,7 +23,30 @@ declare function db:validName( $database ) {
 
 declare function db:documents( $database, $limit, $startKey, $endKey, 
   $descending, $includeDocs ) {
-  ('buh') };
+  let $offset := 0
+  let $rows := xdmp:eval('
+  import stuff
+  declare variables
+    let $uris := 
+      let $l := fn:concat( "limit=", ( $limit, 11 ) [1] )
+      let $d := if ($descending) then "descending" else ()
+      return (
+        cts:uris( $startKey, ( $l, $d ), cts:directory-query( $couchBase, "infinity" ) )
+       [ fn:not( fn:matches( ., "versions/" ) ) ]
+       [ if($endKey) then . < fn:concat($couchBase, $endKey) else fn:true() ] )
+    let $_ := xdmp:log( $uris )
+    let $history := dls:document-history( $uris ) [.//*:latest]
+    return 
+      fn:concat("{ ""array"": ", for $h in $history
+      return  xdmp:to-json(
+        ( fn:replace( fn:string( $h//*:document-uri ), $couchBase, "" ),
+          fn:concat( fn:string( $h//*:version-id ), "-", fn:string( $h//*:annotation ) ) ) ), "}")',
+          (xs:QName("startKey"), '...'),
+          <options xmlns="xdmp:eval">
+            <database> { xdmp:database( $database ) } </database>
+          </options> )
+  return xdmp:to-json(
+    ( $database, db:_database( $database ) [2], $offset, $rows ) ) };
 
 declare function db:create( $database ) { 
   let $m := map:map()
@@ -33,12 +63,18 @@ declare function db:create( $database ) {
   then h:errorFor( map:get( $m, '412' ) )
   else 
     let $db := 
-      try { info:database-create( $database ) }
+      try { info:database-create( $database ),
+        db:setURILexicon( $database ) }
       catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) }
     return 
       if ( $db castable as xs:integer ) then <ok/> 
       else h:errorFor( map:get( $m, '500' ) )
    else h:errorFor( map:get( $m, '400' ) ) } ;
+
+declare function db:setURILexicon( $database ) {
+  admin:save-configuration-without-restart(
+    admin:database-set-uri-lexicon( admin:get-configuration(), 
+      xdmp:database( $database ), fn:true() ) ) } ;
 
 declare function db:database( $database ) {
   let $m := map:map()
@@ -46,23 +82,24 @@ declare function db:database( $database ) {
     'Database does not exist.' ) )
   return
     if ( db:exists ( $database ) )
-    then 
-      let $db     := xdmp:read-cluster-config-file("databases.xml") 
-        //*:database [ *:database-name = $database ] 
-      let $forestCounts := 
-        for $id in $db//*:forest-id
-        return xdmp:forest-counts(xs:unsignedLong($id))
-      let $forestStatus := 
-        for $id in $db//*:forest-id
-        return xdmp:forest-status(xs:unsignedLong($id))
-      let $activeCount := fn:sum( $forestCounts//*:document-count)
-      let $deletedCount := fn:sum( $forestCounts//*:deleted-fragment-count)
-      let $updateSeq    := xdmp:request-timestamp() 
-      let $merging      := 
-        some $f in $forestStatus//*:merges satisfies $f/node()
-      return xdmp:to-json(
-        ( $database, $activeCount, $deletedCount, $merging, $updateSeq ) )
+    then xdmp:to-json( db:_database( $database ) )
     else h:errorFor( map:get( $m, '404' ) ) };
+
+declare function db:_database( $database ) {
+  let $db     := xdmp:read-cluster-config-file("databases.xml") 
+    //*:database [ *:database-name = $database ] 
+  let $forestCounts := 
+    for $id in $db//*:forest-id
+    return xdmp:forest-counts(xs:unsignedLong($id))
+  let $forestStatus := 
+    for $id in $db//*:forest-id
+    return xdmp:forest-status(xs:unsignedLong($id))
+  let $activeCount := fn:sum( $forestCounts//*:document-count)
+  let $deletedCount := fn:sum( $forestCounts//*:deleted-fragment-count)
+  let $updateSeq    := xdmp:request-timestamp() 
+  let $merging      := 
+    some $f in $forestStatus//*:merges satisfies $f/node()
+  return ( $database, $activeCount, $deletedCount, $merging, $updateSeq ) };
 
 declare function db:delete( $database ) {
   let $m := map:map()

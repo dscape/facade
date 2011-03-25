@@ -7,9 +7,8 @@ declare variable $database := xdmp:get-request-field( 'database' ) [1] ;
 declare variable $uri      := xdmp:get-request-field( 'document' ) [1] ;
 
 declare function local:put()    { 
-  xdmp:log(xdmp:get-request-field-names()),
   mvc:mustRevalidateCache(), mvc:render( 'shared/create', 
-    doc:create( $database, $uri, text{" "} ) )  } ;
+    doc:create( $database, $uri, xdmp:get-request-body( 'text' ) ) )  } ;
 
 declare function local:get() { 'foo' };
 
