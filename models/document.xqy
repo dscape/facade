@@ -34,11 +34,7 @@ declare function doc:document( $database, $uri ) {
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
         </options> ) )
-        let $n := $l[1]/node()/*
-        let $_ := xdmp:log( $n instance of element(*) )
-        let $jsonx := 
-          mem:node-insert-child( $n, <_rev> { $l[2] } </_rev> )/*
-        return text { json:xmlToJSON( $jsonx ) } }
+        return text { json:xmlToJSON( $l[1]/json ) } }
       catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) } 
     else h:errorFor( map:get( $m, '404' ) )
   (: json:xmlToJSON :) } ;
@@ -61,14 +57,15 @@ declare function doc:create( $database, $uri, $json ) {
   let $q :=
    'import module namespace dls = "http://marklogic.com/xdmp/dls" 
     at "/MarkLogic/dls.xqy" ;
+    
     declare variable $uri external ;
     declare variable $json external ;
     declare variable $managed := dls:document-is-managed( $uri ) ;
     
-    let $rev := xdmp:md5( fn:concat( fn:string( xdmp:random() ), $json ) )
+    let $rev := fn:string( ($json//_rev) [1] )
     return if ( $managed )
     then 
-      let $u := dls:document-checkout-update-checkin( $uri, $json, xdmp:md5($json), fn:true() )
+      let $u := dls:document-checkout-update-checkin( $uri, $json, $rev, fn:true() )
       let $_ := xdmp:add-response-header( "ETag", $rev )
       return ()
     else dls:document-insert-and-manage( $uri, fn:false(), $json, $rev )'
@@ -78,7 +75,13 @@ declare function doc:create( $database, $uri, $json ) {
     then if( fn:exists( $invalidKeys ) )
     then h:errorFor( map:get( $m, '500v' ) )
     else
-      try { ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("json"), $doc ) ,
+      try { 
+        let $rev := xdmp:md5( fn:concat( fn:string( xdmp:random() ), $json ) )
+        let $jsonWithRevs :=
+          mem:node-insert-after( $doc/json/@*[fn:last()],
+            ( if ($json//_id) then () else <_id>{$uri}</_id>,
+              <_rev>{$rev}</_rev>) ) /json
+        return ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("json"), $jsonWithRevs ) ,
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
           <isolation>different-transaction</isolation>

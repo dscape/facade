@@ -45,7 +45,6 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
         [ fn:not( fn:matches( ., "versions/" ) ) ]
         [ if($endKey) then . < fn:concat($couchBase, $endKey) else fn:true() ] 
     let $history := dls:document-history( $uris ) [.//*:latest]
-    let $_ := xdmp:log($history)
     return fn:string-join(
       for $h in document{ $history } /*:document-history
       let $uri := fn:replace( fn:string( $h//*:document-uri ), $couchBase, "" )
