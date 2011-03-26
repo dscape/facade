@@ -10,6 +10,10 @@ declare function local:put()    {
   mvc:mustRevalidateCache(), mvc:render( 'shared/create', 
     doc:create( $database, $uri, xdmp:get-request-body( 'text' ) ) )  } ;
 
+declare function local:delete()    { 
+  mvc:mustRevalidateCache(), mvc:render( 'shared/ok', 
+    doc:delete( $database, $uri ) )  } ;
+
 declare function local:get() { 
   mvc:mustRevalidateCache(), mvc:render( 'document/show', 
     doc:document( $database, $uri ) ) };

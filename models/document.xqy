@@ -9,6 +9,31 @@ import module namespace json = "http://marklogic.com/json"
 
 declare variable $couchBase := '/_couchBase/' ;
 
+declare function doc:delete( $database, $uri ) {
+  let $m := map:map()
+  let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found', 
+    'No DB File.' ) )
+  let $_ := map:put( $m, '500', ( 500, 'Internal Server Error', 'doc_get_exc',
+    'The document could not be retrieved, an exception ocurred.' ) )
+  let $uri := fn:concat( $couchBase, $uri )
+  let $q :=
+   'import module namespace dls = "http://marklogic.com/xdmp/dls" 
+     at "/MarkLogic/dls.xqy" ;
+    declare variable $uri external ;
+    dls:document-delete( $uri, fn:true(), fn:true() )'
+  return
+    if ( db:exists( $database ) )
+    then 
+      try { 
+        let $_ := 
+        ( xdmp:eval( $q, ( xs:QName("uri"), $uri ) ,
+        <options xmlns="xdmp:eval">
+          <database> { xdmp:database( $database ) } </database>
+        </options> ) )
+        return <ok/> }
+      catch ( $e ) { xdmp:log( $e ), h:errorFor( map:get( $m, '500' ) ) } 
+    else h:errorFor( map:get( $m, '404' ) ) } ;
+
 declare function doc:document( $database, $uri ) {
   let $m := map:map()
   let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found', 
@@ -21,7 +46,8 @@ declare function doc:document( $database, $uri ) {
      at "/MarkLogic/dls.xqy" ;
     declare variable $uri external ;
     declare variable $rev := fn:string( 
-      dls:document-history( $uri ) //*:annotation ) ;
+      dls:document-history( $uri ) /*:version
+        [ *:latest/fn:string() = "true" ] /*:annotation ) ;
    ( xdmp:add-response-header( "ETag", $rev ),
      fn:doc( $uri ),
      $rev )'
@@ -36,8 +62,7 @@ declare function doc:document( $database, $uri ) {
         </options> ) )
         return text { json:xmlToJSON( $l[1]/json ) } }
       catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) } 
-    else h:errorFor( map:get( $m, '404' ) )
-  (: json:xmlToJSON :) } ;
+    else h:errorFor( map:get( $m, '404' ) ) } ;
 
 declare function doc:create( $database, $uri, $json ) {
   let $m := map:map()
@@ -75,13 +100,19 @@ declare function doc:create( $database, $uri, $json ) {
     then h:errorFor( map:get( $m, '500v' ) )
     else
       try { 
-        let $rev := xdmp:md5( fn:concat( fn:string( xdmp:random() ), $json ) )
+        let $rev := <_rev type="string">{
+          xdmp:md5( fn:concat( fn:string( xdmp:random() ), $json ) ) } </_rev>
         let $a := <a>{$doc/node()}</a>
-        let $jsonWithRevs :=
+        let $jsonWithId :=
           mem:node-insert-after( $a/json/@*[fn:last()],
-            ( if ($json//_id) then () else <_id>{fn:replace($uri,$couchBase, "")}</_id>,
-              <_rev>{$rev}</_rev>) ) /json
-        return ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("json"), $jsonWithRevs ) ,
+            ( if ($a//_id) then () else 
+            <_id  type="string">{fn:replace($uri,$couchBase, "")}</_id>) ) 
+        let $revFromId := ( $jsonWithId//_rev ) [1]
+        let $jsonWithRevs := if ($revFromId)
+          then mem:node-replace( $revFromId, $rev )
+          else mem:node-insert-after( ($jsonWithId//_id) [1], $rev ) 
+        return ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("json"), 
+          $jsonWithRevs/json ) ,
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
           <isolation>different-transaction</isolation>

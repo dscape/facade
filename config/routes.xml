@@ -3,6 +3,7 @@
   <get path="_uuids"> <to> server#uuids </to> </get>
   <get path="_session"> <to> server#session </to> </get>
   <get path="_all_dbs"> <to> database#list </to> </get>
+  <get path="_changes"> <to> database#changes </to> </get>
   <resource name=":database">
     <member action="_all_docs"/>
     <resource name=":document"/>

@@ -1,12 +1,11 @@
 xquery version "1.0-ml";
 module namespace db = "model:database";
 
-import module namespace admin = "http://marklogic.com/xdmp/admin" 
-  at "/MarkLogic/admin.xqy";
-
 import module namespace h    = "helper.xqy" at "/lib/rewrite/helper.xqy" ;
 import module namespace info="http://marklogic.com/appservices/infostudio" 
   at "/MarkLogic/appservices/infostudio/info.xqy";
+import module namespace admin = "http://marklogic.com/xdmp/admin" 
+  at "/MarkLogic/admin.xqy";
 
 declare function db:list() { xdmp:to-json( db:_list() ) } ;
 
@@ -44,10 +43,11 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
       cts:uris( $startKey, ( $l, $d ), cts:directory-query( $couchBase, "infinity" ) )
         [ fn:not( fn:matches( ., "versions/" ) ) ]
         [ if($endKey) then . < fn:concat($couchBase, $endKey) else fn:true() ] 
-    let $history := dls:document-history( $uris ) [.//*:latest]
+    let $versions := dls:document-history( $uris ) /*:version
+      [ *:latest/fn:string() = "true" ]
     return fn:string-join(
-      for $h in document{ $history } /*:document-history
-      let $uri := fn:replace( fn:string( $h//*:document-uri ), $couchBase, "" )
+      for $h in $versions
+      let $uri := fn:replace( fn:string( $h//*:document-uri[1] ), $couchBase, "" )
       let $rev := fn:concat( fn:string( $h//*:version-id ), "-", 
         fn:string( $h//*:annotation ) )
       return  fn:concat(
@@ -85,17 +85,30 @@ declare function db:create( $database ) {
   else 
     let $db := 
       try { info:database-create( $database ),
-        db:setURILexicon( $database ) }
+        db:setup( $database ) }
       catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) }
     return 
       if ( $db castable as xs:integer ) then <ok/> 
       else h:errorFor( map:get( $m, '500' ) )
    else h:errorFor( map:get( $m, '400' ) ) } ;
 
-declare function db:setURILexicon( $database ) {
+declare function db:setup( $database ) {
   admin:save-configuration-without-restart(
     admin:database-set-uri-lexicon( admin:get-configuration(), 
-      xdmp:database( $database ), fn:true() ) ) } ;
+      xdmp:database( $database ), fn:true() ) ),
+  xdmp:eval('import module namespace dls="http://marklogic.com/xdmp/dls" 
+    at "/MarkLogic/dls.xqy";
+    dls:retention-rule-insert(
+    dls:retention-rule(
+      "All Versions Retention Rule",
+      "Retain all versions of all documents",
+      (),
+      (),
+      "Locate all of the documents",
+      cts:and-query(()) ) )', (),
+    <options xmlns="xdmp:eval">
+      <database> { xdmp:database( $database ) } </database>
+    </options> ) } ;
 
 declare function db:database( $database ) {
   let $m := map:map()
