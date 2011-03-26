@@ -60,10 +60,9 @@ declare function doc:create( $database, $uri, $json ) {
     
     declare variable $uri external ;
     declare variable $json external ;
-    declare variable $managed := dls:document-is-managed( $uri ) ;
     
     let $rev := fn:string( ($json//_rev) [1] )
-    return if ( $managed )
+    return if ( dls:document-is-managed( $uri ) )
     then 
       let $u := dls:document-checkout-update-checkin( $uri, $json, $rev, fn:true() )
       let $_ := xdmp:add-response-header( "ETag", $rev )
@@ -77,9 +76,10 @@ declare function doc:create( $database, $uri, $json ) {
     else
       try { 
         let $rev := xdmp:md5( fn:concat( fn:string( xdmp:random() ), $json ) )
+        let $a := <a>{$doc/node()}</a>
         let $jsonWithRevs :=
-          mem:node-insert-after( $doc/json/@*[fn:last()],
-            ( if ($json//_id) then () else <_id>{$uri}</_id>,
+          mem:node-insert-after( $a/json/@*[fn:last()],
+            ( if ($json//_id) then () else <_id>{fn:replace($uri,$couchBase, "")}</_id>,
               <_rev>{$rev}</_rev>) ) /json
         return ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("json"), $jsonWithRevs ) ,
         <options xmlns="xdmp:eval">

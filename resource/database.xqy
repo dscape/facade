@@ -1,5 +1,7 @@
 xquery version "1.0-ml";
 
+import module namespace server    = "model:server" at "/models/server.xqy" ;
+import module namespace doc    = "model:document" at "/models/document.xqy" ;
 import module namespace db = "model:database" at "/models/database.xqy" ;
 import module namespace mvc    = "helper.xqy" at "/lib/rewrite/helper.xqy" ;
 
@@ -16,6 +18,12 @@ declare function local:_all_docs() {
     xdmp:get-request-field( 'endkey' ) [1],
     xdmp:get-request-field( 'descending' ) [1] = 'true',
     xdmp:get-request-field( 'include_docs' ) [1] ) )  } ;
+
+declare function local:post()    { 
+  mvc:mustRevalidateCache(), mvc:render( 'shared/create', 
+    doc:create( $database, 
+      fn:string( server:_uuids( 1 ) )
+      , xdmp:get-request-body( 'text' ) ) )  } ;
 
 declare function local:put()    { 
   mvc:mustRevalidateCache(), mvc:render( 'shared/create', 
