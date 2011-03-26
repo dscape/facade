@@ -1,12 +1,47 @@
 xquery version "1.0-ml";
 module namespace doc = "model:document";
 
-import module namespace db = "model:database" at "/models/database.xqy" ;
+import module namespace db   = "model:database" at "/models/database.xqy" ;
 import module namespace h    = "helper.xqy" at "/lib/rewrite/helper.xqy" ;
+import module namespace mem  = "update.xqy" at "/lib/update.xqy" ;
 import module namespace json = "http://marklogic.com/json"
   at "/lib/json.xqy" ;
 
 declare variable $couchBase := '/_couchBase/' ;
+
+declare function doc:document( $database, $uri ) {
+  let $m := map:map()
+  let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found', 
+    'No DB File.' ) )
+  let $_ := map:put( $m, '500', ( 500, 'Internal Server Error', 'doc_get_exc',
+    'The document could not be retrieved, an exception ocurred.' ) )
+  let $uri := fn:concat( $couchBase, $uri )
+  let $q :=
+   'import module namespace dls = "http://marklogic.com/xdmp/dls" 
+     at "/MarkLogic/dls.xqy" ;
+    declare variable $uri external ;
+    declare variable $rev := fn:string( 
+      dls:document-history( $uri ) //*:annotation ) ;
+   ( xdmp:add-response-header( "ETag", $rev ),
+     fn:doc( $uri ),
+     $rev )'
+  return
+    if ( db:exists( $database ) )
+    then 
+      try { 
+        let $l := 
+        ( xdmp:eval( $q, ( xs:QName("uri"), $uri ) ,
+        <options xmlns="xdmp:eval">
+          <database> { xdmp:database( $database ) } </database>
+        </options> ) )
+        let $n := $l[1]/node()/*
+        let $_ := xdmp:log( $n instance of element(*) )
+        let $jsonx := 
+          mem:node-insert-child( $n, <_rev> { $l[2] } </_rev> )/*
+        return text { json:xmlToJSON( $jsonx ) } }
+      catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) } 
+    else h:errorFor( map:get( $m, '404' ) )
+  (: json:xmlToJSON :) } ;
 
 declare function doc:create( $database, $uri, $json ) {
   let $m := map:map()
@@ -30,12 +65,13 @@ declare function doc:create( $database, $uri, $json ) {
     declare variable $json external ;
     declare variable $managed := dls:document-is-managed( $uri ) ;
     
-    if ( $managed )
+    let $rev := xdmp:md5( fn:concat( fn:string( xdmp:random() ), $json ) )
+    return if ( $managed )
     then 
       let $u := dls:document-checkout-update-checkin( $uri, $json, xdmp:md5($json), fn:true() )
-      let $_ := xdmp:add-response-header( "ETag", xdmp:md5($json) )
+      let $_ := xdmp:add-response-header( "ETag", $rev )
       return ()
-    else dls:document-insert-and-manage( $uri, fn:false(), $json, xdmp:md5($json) )'
+    else dls:document-insert-and-manage( $uri, fn:false(), $json, $rev )'
   return 
     if ( db:exists( $database ) )
     then if( $doc )

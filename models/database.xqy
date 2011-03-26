@@ -3,14 +3,10 @@ module namespace db = "model:database";
 
 import module namespace admin = "http://marklogic.com/xdmp/admin" 
   at "/MarkLogic/admin.xqy";
-import module namespace dls = "http://marklogic.com/xdmp/dls" 
-  at "/MarkLogic/dls.xqy";
 
 import module namespace h    = "helper.xqy" at "/lib/rewrite/helper.xqy" ;
 import module namespace info="http://marklogic.com/appservices/infostudio" 
   at "/MarkLogic/appservices/infostudio/info.xqy";
-
-declare variable $couchBase := '/_couchBase/' ;
 
 declare function db:list() { xdmp:to-json( db:_list() ) } ;
 
@@ -23,30 +19,56 @@ declare function db:validName( $database ) {
 
 declare function db:documents( $database, $limit, $startKey, $endKey, 
   $descending, $includeDocs ) {
-  let $offset := 0
-  let $rows := xdmp:eval('
-  import stuff
-  declare variables
+  let $m := map:map()
+  let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found',
+    'Database does not exist.' ) )
+  let $_ := map:put( $m, '500', ( 500, 'Internal Server Error', 'db_docs_exc',
+    'The database docs could not be retrieved, an exception ocurred.' ) )
+  return 
+    if ( db:exists( $database ) )
+    then 
+      try {
+      let $offset := 0
+      let $rows := xdmp:eval('
+    import module namespace dls = "http://marklogic.com/xdmp/dls" 
+      at "/MarkLogic/dls.xqy";
+    declare variable $args external ;
+    declare variable $couchBase := "/_couchBase/" ;
+    declare variable $l         := xdmp:from-json($args) ;
+    let $l           := $l[1]
+    let $d           := $l[2]
+    let $includeDocs := $l[3]
+    let $startKey    := if ( $l[4] ) then $l[4] else ()
+    let $endKey      := $l [5]
     let $uris := 
-      let $l := fn:concat( "limit=", ( $limit, 11 ) [1] )
-      let $d := if ($descending) then "descending" else ()
-      return (
-        cts:uris( $startKey, ( $l, $d ), cts:directory-query( $couchBase, "infinity" ) )
-       [ fn:not( fn:matches( ., "versions/" ) ) ]
-       [ if($endKey) then . < fn:concat($couchBase, $endKey) else fn:true() ] )
-    let $_ := xdmp:log( $uris )
+      cts:uris( $startKey, ( $l, $d ), cts:directory-query( $couchBase, "infinity" ) )
+        [ fn:not( fn:matches( ., "versions/" ) ) ]
+        [ if($endKey) then . < fn:concat($couchBase, $endKey) else fn:true() ] 
     let $history := dls:document-history( $uris ) [.//*:latest]
-    return 
-      fn:concat("{ ""array"": ", for $h in $history
-      return  xdmp:to-json(
-        ( fn:replace( fn:string( $h//*:document-uri ), $couchBase, "" ),
-          fn:concat( fn:string( $h//*:version-id ), "-", fn:string( $h//*:annotation ) ) ) ), "}")',
-          (xs:QName("startKey"), '...'),
-          <options xmlns="xdmp:eval">
-            <database> { xdmp:database( $database ) } </database>
-          </options> )
-  return xdmp:to-json(
-    ( $database, db:_database( $database ) [2], $offset, $rows ) ) };
+    let $_ := xdmp:log($history)
+    return fn:string-join(
+      for $h in document{ $history } /*:document-history
+      let $uri := fn:replace( fn:string( $h//*:document-uri ), $couchBase, "" )
+      let $rev := fn:concat( fn:string( $h//*:version-id ), "-", 
+        fn:string( $h//*:annotation ) )
+      return  fn:concat(
+        "{""key"": """, $uri,""", ",
+        """id"": """, $uri,""", ",
+        """value"": { ""rev"": """, $rev,""" } }"), ",&#x0a;" )',
+        ( xs:QName("args"), 
+          xdmp:to-json( (fn:concat( "limit=", ( $limit, 11 ) [1] ),
+          if ( $descending ) then "descending" else 'ascending',
+          if ( $includeDocs ) then fn:true() else fn:false(),
+          if ( $startKey ) then $startKey else fn:false(),
+          $endKey ) ) ),
+        <options xmlns="xdmp:eval">
+          <database> { xdmp:database( $database ) } </database>
+        </options> )
+    return text { xdmp:to-json(
+      ( $database, db:_database( $database ) [2], $offset, $rows ) ) } }
+    catch( $e ) { xdmp:log( $e ), h:errorFor( map:get( $m, '500' ) ) }
+    else
+      h:errorFor( map:get( $m, '404' ) ) };
 
 declare function db:create( $database ) { 
   let $m := map:map()
@@ -94,7 +116,13 @@ declare function db:_database( $database ) {
   let $forestStatus := 
     for $id in $db//*:forest-id
     return xdmp:forest-status(xs:unsignedLong($id))
-  let $activeCount := fn:sum( $forestCounts//*:document-count)
+  let $activeCount := xdmp:eval('
+    declare variable $couchBase := "/_couchBase/" ;
+    xdmp:estimate( 
+      cts:search( fn:doc(), cts:directory-query( $couchBase ) ) )',
+    (), <options xmlns="xdmp:eval">
+      <database> { xdmp:database( $database ) } </database>
+    </options>)
   let $deletedCount := fn:sum( $forestCounts//*:deleted-fragment-count)
   let $updateSeq    := xdmp:request-timestamp() 
   let $merging      := 

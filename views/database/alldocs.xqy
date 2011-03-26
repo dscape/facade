@@ -1,17 +1,17 @@
-import module namespace m = "mustache.xq" at "/lib/mustache/mustache.xq" ;
-
 declare variable $params external ;
-declare variable $l := xdmp:from-json( $params ) ;
 
-
-m:render(
-  fn:string( <v>
-  {{ 
-   "total_rows": { $l [2] },
-   "offset": { $l [3] },
-   "rows": [
-     { $l [4] }
-     {{{{#array}}}} {{{{.}}}} {{{{/array}}}}
-   ]
-  }}&#x0a;</v> ),
-  $l [4] )
+let $e := $params/e
+return 
+  if( $e )
+  then fn:string( <v>{{"error":"{$e/id}","reason":"{$e/text()}"}}&#x0a;</v> )
+  else 
+    let $l := xdmp:from-json( $params )
+    return 
+      fn:string( <v>
+        {{ 
+           "total_rows": { $l [2] },
+           "offset": { $l [3] },
+           "rows": [ 
+            { $l[4] }
+           ]
+        }}&#x0a;</v> )
