@@ -17,7 +17,7 @@ declare function db:validName( $database ) {
   fn:matches( $database, '^[a-z]([a-z]|[0-9]|_|-)*$' ) } ;
 
 declare function db:documents( $database, $limit, $startKey, $endKey, 
-  $descending, $includeDocs ) {
+  $descending, $includeDocs, $skip ) {
   let $m := map:map()
   let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found',
     'Database does not exist.' ) )
@@ -27,8 +27,8 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
     if ( db:exists( $database ) )
     then 
       try {
-      let $offset := 0
-      let $rows := xdmp:eval('
+      let $totalDocs := db:_database( $database ) [2]
+      let $l := xdmp:eval('
     import module namespace dls = "http://marklogic.com/xdmp/dls" 
       at "/MarkLogic/dls.xqy";
     declare variable $limit external ;
@@ -36,19 +36,33 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
     declare variable $includeDocs external ;
     declare variable $startKey external ;
     declare variable $endKey external ;
+    declare variable $skip external ;
+    declare variable $totalDocs external ;
     declare variable $couchBase := "/_couchBase/" ;
 
-    let $startKey    := 
-      if ( $startKey ) then fn:concat( $couchBase, $startKey ) else ()
+    let $s := 
+      if ( $descending = "descending" )
+      then $endKey
+      else $startKey
+    let $e := 
+      if ( $descending = "descending" )
+      then $startKey
+      else $endKey
+    let $total := xs:unsignedInt( $limit ) + $skip + 1
     let $uris := 
-      cts:uris( $startKey, ( $limit, $descending ), 
+      cts:uris( (), ( $descending ), 
         cts:directory-query( $couchBase, "1" ) )
-        [ fn:not( fn:matches( ., "versions/" ) ) ]
-        [ if($endKey) then . < fn:concat($couchBase, $endKey) else fn:true() ] 
+        [ if ($s) then . > fn:concat( $couchBase, $s ) else fn:true()]
+        [ if($e) then . < fn:concat($couchBase, $e) else fn:true() ]
+        [ $skip+1 to $total+1 ]  
+    let $offset :=
+      fn:count( cts:uris( $uris[1], ( 
+        if ( $descending = "descending" ) then "ascending" else "descending" ) , 
+          cts:directory-query( $couchBase, "1" ) ) ) - 1
     let $versions := 
       for $uri in $uris
       return dls:document-history( $uri ) /*:version [ *:latest/fn:string() = "true" ]
-    return fn:string-join(
+    return ($offset, fn:string-join(
       for $h in $versions
       let $uri := fn:replace( fn:string( $h//*:document-uri[1] ), $couchBase, "" )
       let $rev := fn:concat( fn:string( $h//*:version-id ), "-", 
@@ -56,8 +70,8 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
       return  fn:concat(
         "{""key"": """, $uri,""", ",
         """id"": """, $uri,""", ",
-        """value"": { ""rev"": """, $rev,""" } }"), ",&#x0a;" )',
-        ( xs:QName("limit"), fn:concat( "limit=", ( $limit, 11 ) [1] ),
+        """value"": { ""rev"": """, $rev,""" } }"), ",&#x0a;" ))',
+        ( xs:QName("limit"), ( $limit, 11 )[1] ,
           xs:QName("descending"), 
           if ( $descending ) then 'descending' else 'ascending',
           xs:QName("includeDocs"), 
@@ -67,12 +81,18 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
             then fn:replace($startKey, '"', '') else fn:false(),
           xs:QName("endKey"), 
           if ( $endKey instance of xs:string ) 
-            then fn:replace($endKey, '"', '') else fn:false() ),
+            then fn:replace($endKey, '"', '') else fn:false(),
+          xs:QName("skip"), 
+          if ( $skip castable as xs:unsignedInt ) 
+          then xs:unsignedInt($skip) else 0,
+          xs:QName("totalDocs"), $totalDocs ),
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
         </options> )
+    let $offset := $l[1]
+    let $rows   := $l[2]
     return text { xdmp:to-json(
-      ( $database, db:_database( $database ) [2], $offset, $rows ) ) } }
+      ( $database, $totalDocs, $offset, $rows ) ) } }
     catch( $e ) { xdmp:log( $e ), h:errorFor( map:get( $m, '500' ) ) }
     else
       h:errorFor( map:get( $m, '404' ) ) };

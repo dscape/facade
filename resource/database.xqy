@@ -17,7 +17,8 @@ declare function local:_all_docs() {
     xdmp:get-request-field( 'startkey' ) [1],
     xdmp:get-request-field( 'endkey' ) [1],
     xdmp:get-request-field( 'descending' ) [1] = 'true',
-    xdmp:get-request-field( 'include_docs' ) [1] ) )  } ;
+    xdmp:get-request-field( 'include_docs' ) [1],
+    xdmp:get-request-field( 'skip' ) [1] ) )  } ;
 
 declare function local:post()    { 
   mvc:mustRevalidateCache(), mvc:render( 'shared/create', 
