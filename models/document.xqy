@@ -46,7 +46,6 @@ declare function doc:document( $database, $uri, $revsInfo, $rev ) {
      at "/MarkLogic/dls.xqy" ;
     declare variable $uri external ;
     declare variable $rev external ;
-    declare variable $revsInfo external ;
     declare variable $versions := dls:document-history( $uri ) /*:version ;
     
     declare function local:versionIsAvailable( $version ) {
@@ -60,26 +59,26 @@ declare function doc:document( $database, $uri, $revsInfo, $rev ) {
       if( local:versionIsAvailable( $version ) )
       then 
         let $doc := dls:document-version( $uri, xs:unsignedInt( $version ) )
-        let $rev := xs:string($doc/_rev[1])
+        let $rev := fn:concat( $version, "-", $doc//_rev[1] )
         return ( xdmp:add-response-header( "ETag", $rev ), $doc, $rev )
       else 
-        let $rev := fn:string( 
-          $versions [ *:latest/fn:string() = "true" ] /*:annotation )
+        let $version := fn:string( 
+          $versions [ *:latest/fn:string() = "true" ] /*:version-id )
+        let $rev := fn:concat( $version, "-", fn:string(
+          $versions [ *:latest/fn:string() = "true" ] /*:annotation[1] ) )
         return ( xdmp:add-response-header( "ETag", $rev ), fn:doc( $uri ), $rev ) };
 
-   ( local:getDoc( $rev ),
-     if($revsInfo) then $versions else () )'
+   ( local:getDoc( $rev ), $versions )'
   return
     if ( db:exists( $database ) )
     then 
       try { 
         let $l := 
-        ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("rev"), $rev,
-        xs:QName("revsInfo"), if($revsInfo) then fn:true() else fn:false() ) ,
+        ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("rev"), $rev ) ,
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
         </options> ) )
-        let $revs := <_revs_info type="array">
+        let $revs := if($revsInfo) then <_revs_info type="array">
             { for $i in $l[3 to fn:last()]
               let $version := fn:string( $i//*:version-id )
               let $r     := fn:string( $i//*:annotation )
@@ -90,13 +89,14 @@ declare function doc:document( $database, $uri, $revsInfo, $rev ) {
                 <status type="string">{$status}</status>
               </item>
             }
-        </_revs_info>
-        let $revNode := <a> { $l[1]/json } </a>//_rev[1]
-        let $json := mem:node-insert-after( $revNode, $revs ) /json
-        let $dispRev := $revs//rev[fn:ends-with(.,fn:string($revNode))]/fn:string()
-        let $json := mem:node-replace( $revNode,
-          <_rev type="string">{$dispRev}</_rev> ) /json
-        return text { json:xmlToJSON( $json ) } }
+        </_revs_info> else ()
+        let $_ := xdmp:log($revs)
+        let $idNode := <a> { $l[1]/json } </a>//_id[1]
+        let $json := <b> { mem:node-insert-after( $idNode, $revs ) } </b> //json
+        let $dispRev := $l[2]
+        let $jsonCorrectRev := mem:node-replace( $json//_rev[1],
+          <_rev type="string">{$dispRev}</_rev> ) //json 
+        return text { json:xmlToJSON( $jsonCorrectRev ) } }
       catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) } 
     else h:errorFor( map:get( $m, '404' ) ) } ;
 
