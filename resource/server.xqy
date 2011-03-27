@@ -7,9 +7,22 @@ declare function local:version() {
   mvc:mustRevalidateCache(), mvc:render( 'server/version', 
     server:version() )  } ;
 
+declare function local:native_query_servers() { '{}' } ;
+
+declare function local:query_servers() { 
+  '{"javascript":"couchdb_1.0.1/bin/couchjs couchdb_1.0.1/share/couchdb/server/main.js"}
+' } ;
+
 declare function local:session() {
-  mvc:mustRevalidateCache(), mvc:render( 'server/session', 
-    server:session() )  } ;
+  '{ "ok": true,
+     "userCtx": 
+      { "name": null,
+        "roles": ["_admin"]
+      },
+     "info":{"authentication_db":"_users",
+     "authentication_handlers":["oauth","cookie","default"],
+     "authenticated":"default"}}
+  '  } ;
 
 declare function local:uuids() { ( 
   mvc:noCache(), mvc:render( 'server/uuids',

@@ -31,20 +31,23 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
       let $rows := xdmp:eval('
     import module namespace dls = "http://marklogic.com/xdmp/dls" 
       at "/MarkLogic/dls.xqy";
-    declare variable $args external ;
+    declare variable $limit external ;
+    declare variable $descending external ;
+    declare variable $includeDocs external ;
+    declare variable $startKey external ;
+    declare variable $endKey external ;
     declare variable $couchBase := "/_couchBase/" ;
-    declare variable $l         := xdmp:from-json($args) ;
-    let $l           := $l[1]
-    let $d           := $l[2]
-    let $includeDocs := $l[3]
-    let $startKey    := if ( $l[4] ) then $l[4] else ()
-    let $endKey      := $l [5]
+
+    let $startKey    := 
+      if ( $startKey ) then fn:concat( $couchBase, $startKey ) else ()
     let $uris := 
-      cts:uris( $startKey, ( $l, $d ), cts:directory-query( $couchBase, "infinity" ) )
+      cts:uris( $startKey, ( $limit, $descending ), 
+        cts:directory-query( $couchBase, "1" ) )
         [ fn:not( fn:matches( ., "versions/" ) ) ]
         [ if($endKey) then . < fn:concat($couchBase, $endKey) else fn:true() ] 
-    let $versions := dls:document-history( $uris ) /*:version
-      [ *:latest/fn:string() = "true" ]
+    let $versions := 
+      for $uri in $uris
+      return dls:document-history( $uri ) /*:version [ *:latest/fn:string() = "true" ]
     return fn:string-join(
       for $h in $versions
       let $uri := fn:replace( fn:string( $h//*:document-uri[1] ), $couchBase, "" )
@@ -54,12 +57,17 @@ declare function db:documents( $database, $limit, $startKey, $endKey,
         "{""key"": """, $uri,""", ",
         """id"": """, $uri,""", ",
         """value"": { ""rev"": """, $rev,""" } }"), ",&#x0a;" )',
-        ( xs:QName("args"), 
-          xdmp:to-json( (fn:concat( "limit=", ( $limit, 11 ) [1] ),
-          if ( $descending ) then "descending" else 'ascending',
+        ( xs:QName("limit"), fn:concat( "limit=", ( $limit, 11 ) [1] ),
+          xs:QName("descending"), 
+          if ( $descending ) then 'descending' else 'ascending',
+          xs:QName("includeDocs"), 
           if ( $includeDocs ) then fn:true() else fn:false(),
-          if ( $startKey ) then $startKey else fn:false(),
-          $endKey ) ) ),
+          xs:QName("startKey"), 
+          if ( $startKey instance of xs:string ) 
+            then fn:replace($startKey, '"', '') else fn:false(),
+          xs:QName("endKey"), 
+          if ( $endKey instance of xs:string ) 
+            then fn:replace($endKey, '"', '') else fn:false() ),
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
         </options> )
