@@ -16,6 +16,7 @@ declare function local:delete()    {
 
 declare function local:get() { 
   mvc:mustRevalidateCache(), mvc:render( 'document/show', 
-    doc:document( $database, $uri ) ) };
+    doc:document( $database, $uri,
+      xdmp:get-request-field( 'revs_info' ) [1] ) ) };
 
 xdmp:apply( mvc:function() )

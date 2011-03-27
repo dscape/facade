@@ -34,7 +34,7 @@ declare function doc:delete( $database, $uri ) {
       catch ( $e ) { xdmp:log( $e ), h:errorFor( map:get( $m, '500' ) ) } 
     else h:errorFor( map:get( $m, '404' ) ) } ;
 
-declare function doc:document( $database, $uri ) {
+declare function doc:document( $database, $uri, $revsInfo ) {
   let $m := map:map()
   let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found', 
     'No DB File.' ) )
@@ -45,22 +45,40 @@ declare function doc:document( $database, $uri ) {
    'import module namespace dls = "http://marklogic.com/xdmp/dls" 
      at "/MarkLogic/dls.xqy" ;
     declare variable $uri external ;
+    declare variable $revsInfo external ;
+    declare variable $versions := dls:document-history( $uri ) /*:version ;
     declare variable $rev := fn:string( 
-      dls:document-history( $uri ) /*:version
-        [ *:latest/fn:string() = "true" ] /*:annotation ) ;
+      $versions [ *:latest/fn:string() = "true" ] /*:annotation ) ;
    ( xdmp:add-response-header( "ETag", $rev ),
      fn:doc( $uri ),
-     $rev )'
+     $rev,
+     if($revsInfo) then $versions else () )'
   return
     if ( db:exists( $database ) )
     then 
       try { 
         let $l := 
-        ( xdmp:eval( $q, ( xs:QName("uri"), $uri ) ,
+        ( xdmp:eval( $q, ( xs:QName("uri"), $uri,
+        xs:QName("revsInfo"), if($revsInfo) then fn:true() else fn:false() ) ,
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
         </options> ) )
-        return text { json:xmlToJSON( $l[1]/json ) } }
+        let $revs := <_revs_info type="array">
+            { for $i in $l[3 to fn:last()]
+              let $version := fn:string( $i//*:version-id )
+              let $rev     := fn:string( $i//*:annotation )
+              let $status := if( $i//*:deleted=fn:true() ) then "missing" else "available"
+              return <item type="object">
+                <rev type="string">{fn:concat($version,"-",$rev)}</rev>
+                <status type="string">{$status}</status>
+              </item>
+            }
+        </_revs_info>
+        let $_ := xdmp:log(json:xmlToJSON( $revs ))
+        let $json := mem:node-insert-after(
+          <a> { $l[1]/json } </a>//_rev[1],
+          $revs ) /json
+        return text { json:xmlToJSON( $json ) } }
       catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) } 
     else h:errorFor( map:get( $m, '404' ) ) } ;
 
