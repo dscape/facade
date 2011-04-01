@@ -28,10 +28,10 @@ Think the documentation sucks? Think the performance is crap? Think `facade` is 
 
 ### Running the tests
 
-To run the tests simply access `/_test/`:
+To run the tests simply access `/_tests/`:
 (assuming 127.0.0.1 is the host and 8090 is the port)
 
-    http://127.0.0.1:8090/test/
+    http://127.0.0.1:8090/_tests/
 
 **Make sure all the tests pass before sending in a pull request!**
 
