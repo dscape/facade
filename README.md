@@ -3,13 +3,13 @@
 
 In the future `facade` could be used as a compatibility layer between [MarkLogic Server][2] and [CouchDB][7], leveraging drivers and replication amongst each other. At this point that is not the objective of the project.
 
-`facade` includes [futon][6] which is part of [CouchDB][7]. A [small fix][10] to support multiple versions of attachments.
+`facade` includes [futon][6] which is part of [CouchDB][7]. A [small fix][10] to support multiple versions of attachments was applied.
 
 ## Usage
 
 Create a MarkLogic HTTP AppServer and configuration make `rewrite.xqy` the default rewriter script.
 
-You can now visit create databases and documents using [futon][6] by accessing `/_utis/`  (e.g. localhost:8953/_utils/)
+You can now visit create databases and documents using [futon][6] by accessing `/_utils/`  (e.g. localhost:8953/_utils/)
 
 *This section doesn't cover how to set up an HTTP Application Server in MarkLogic. If you are a beginner I suggest you start by browsing the [MarkLogic Developer Community site][4] or sign up for [training][5].*
 
