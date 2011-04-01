@@ -37,7 +37,7 @@ To run the tests simply access `/_tests/`:
 
 ### Report a bug
 
-If you want to contribute with a test case please file a [issue][1].
+If you want to report a bug please file a [issue][1].
 
 ## Meta
 
