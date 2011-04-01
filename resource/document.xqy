@@ -7,7 +7,7 @@ declare variable $database := xdmp:get-request-field( 'database' ) [1] ;
 declare variable $uri      := xdmp:get-request-field( 'document' ) [1] ;
 
 declare function local:put()    { 
-  mvc:mustRevalidateCache(), mvc:render( 'shared/create', 
+  mvc:mustRevalidateCache(), mvc:render( 'document/create', 
     doc:create( $database, $uri, xdmp:get-request-body( 'text' ) ) )  } ;
 
 declare function local:delete()    { 

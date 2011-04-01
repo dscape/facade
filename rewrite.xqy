@@ -7,7 +7,7 @@ declare function local:documentGet( $path ) {
 
 declare variable $routesCfg := local:documentGet( "config/routes.xml" ) ;
 
-(: let $r :=:)
+ let $r :=
   r:selectedRoute( $routesCfg/routes )
-(:  let $_ := xdmp:log ($r) 
-  return $r :)
+  let $_ := xdmp:log ($r) 
+  return $r 

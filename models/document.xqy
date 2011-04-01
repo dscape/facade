@@ -90,7 +90,6 @@ declare function doc:document( $database, $uri, $revsInfo, $rev ) {
               </item>
             }
         </_revs_info> else ()
-        let $_ := xdmp:log($revs)
         let $idNode := <a> { $l[1]/json } </a>//_id[1]
         let $json := <b> { mem:node-insert-after( $idNode, $revs ) } </b> //json
         let $dispRev := $l[2]
@@ -112,7 +111,7 @@ declare function doc:create( $database, $uri, $json ) {
     'Invalid UTF-8 JSON.' ) )
   let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found', 
     'No DB File.' ) )  
-  let $uri := fn:concat( $couchBase, $uri )
+  let $curi := fn:concat( $couchBase, $uri )
   let $doc := doc:valid( $json )
   let $invalidKeys := doc:invalidKeys( $doc )
   let $q :=
@@ -123,12 +122,16 @@ declare function doc:create( $database, $uri, $json ) {
     declare variable $json external ;
     
     let $rev := fn:string( ($json//_rev) [1] )
-    return if ( dls:document-is-managed( $uri ) )
-    then 
-      let $u := dls:document-checkout-update-checkin( $uri, $json, $rev, fn:true() )
-      let $_ := xdmp:add-response-header( "ETag", $rev )
-      return ()
-    else dls:document-insert-and-manage( $uri, fn:false(), $json, $rev )'
+    let $version := fn:string( dls:document-history( $uri ) /*:version
+      [ *:latest/fn:string() = "true" ] /*:version-id )
+    let $etag := fn:concat( $version, "-", $rev )
+    let $_ := xdmp:add-response-header( "ETag", $etag )
+    return ( $etag,
+      if ( dls:document-is-managed( $uri ) )
+      then 
+        dls:document-checkout-update-checkin( $uri, $json, $rev, fn:true() )
+      else ( 
+        dls:document-insert-and-manage( $uri, fn:false(), $json, $rev ), $etag ) )'
   return 
     if ( db:exists( $database ) )
     then if( $doc )
@@ -142,17 +145,18 @@ declare function doc:create( $database, $uri, $json ) {
         let $jsonWithId :=
           mem:node-insert-after( $a/json/@*[fn:last()],
             ( if ($a//_id) then () else 
-            <_id  type="string">{fn:replace($uri,$couchBase, "")}</_id>) ) 
+            <_id  type="string">{$uri}</_id>) ) 
         let $revFromId := ( $jsonWithId//_rev ) [1]
         let $jsonWithRevs := if ($revFromId)
           then mem:node-replace( $revFromId, $rev )
           else mem:node-insert-after( ($jsonWithId//_id) [1], $rev ) 
-        return ( xdmp:eval( $q, ( xs:QName("uri"), $uri, xs:QName("json"), 
-          $jsonWithRevs/json ) ,
+        return text { xdmp:to-json( ( $uri, 
+          xdmp:eval( $q, ( xs:QName("uri"), $curi, xs:QName("json"), 
+            $jsonWithRevs/json ) ,
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
           <isolation>different-transaction</isolation>
-        </options> ), <ok/> ) }
+        </options> ) ) ) } }
       catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) } 
     else h:errorFor( map:get( $m, '400' ) )
     else h:errorFor( map:get( $m, '404' ) ) } ;
