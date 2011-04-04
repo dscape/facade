@@ -1,5 +1,5 @@
 # facade
-`facade` is a [rewrite][9] sample application. It exposes [MarkLogic Server][2] by implementing a small subset of the [CouchDB][7] [HTTP API][8]. The objective of `facade` is to demonstrate how to use [rewrite][9] to create a JSON backed web-service. Simple decisions were made in implementing the service and it should not be regarded as an real MVC implementation.
+`facade` is a [rewrite][9] sample application. It exposes [MarkLogic Server][2] by implementing a small subset of the [CouchDB][7] [HTTP API][8]. The objective of `facade` is to demonstrate how to use [rewrite][9] to create a JSON backed web-service. Simple decisions were made in implementing the service and it should not be regarded as an real MVC implementation. In fact the code needs serious refactoring.
 
 In the future `facade` could be used as a compatibility layer between [MarkLogic Server][2] and [CouchDB][7], leveraging drivers and replication amongst each other. At this point that is not the objective of the project.
 

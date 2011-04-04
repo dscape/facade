@@ -110,28 +110,34 @@ declare function doc:create( $database, $uri, $json ) {
   let $_ := map:put( $m, '400', ( 400, 'Bad Request', 'bad_request',
     'Invalid UTF-8 JSON.' ) )
   let $_ := map:put( $m, '404', ( 404, 'Not Found', 'not_found', 
-    'No DB File.' ) )  
-  let $curi := fn:concat( $couchBase, $uri )
-  let $doc := doc:valid( $json )
+    'No DB File.' ) )
+  let $_ := map:put( $m, '409', ( 409, "Conflict", "conflict", 
+  "Document update conflict." ) )
+  let $curi        := fn:concat( $couchBase, $uri )
+  let $doc         := doc:valid( $json )
   let $invalidKeys := doc:invalidKeys( $doc )
-  let $q :=
+  let $q           :=
    'import module namespace dls = "http://marklogic.com/xdmp/dls" 
     at "/MarkLogic/dls.xqy" ;
-    
     declare variable $uri external ;
     declare variable $json external ;
+    declare variable $fromVersion external ;
     
     let $rev := fn:string( ($json//_rev) [1] )
-    let $version := fn:string( dls:document-history( $uri ) /*:version
-      [ *:latest/fn:string() = "true" ] /*:version-id )
+    let $version := if (dls:document-is-managed( $uri ))
+      then fn:string( dls:document-history( $uri ) /*:version
+        [ *:latest/fn:string() = "true" ] /*:version-id )
+      else "1"
     let $etag := fn:concat( $version, "-", $rev )
-    let $_ := xdmp:add-response-header( "ETag", $etag )
-    return ( $etag,
-      if ( dls:document-is-managed( $uri ) )
-      then 
-        dls:document-checkout-update-checkin( $uri, $json, $rev, fn:true() )
-      else ( 
-        dls:document-insert-and-manage( $uri, fn:false(), $json, $rev ), $etag ) )'
+    return 
+      if ( $fromVersion = $version )
+      then ( xdmp:add-response-header( "ETag", $etag ), $etag,
+        if ( dls:document-is-managed( $uri ) )
+        then 
+          dls:document-checkout-update-checkin( $uri, $json, $rev, fn:true() )
+        else ( 
+          dls:document-insert-and-manage( $uri, fn:false(), $json, $rev ), $etag ) )
+      else fn:error(xs:QName("FAC-CONFLICT"), "Conflict")'
   return 
     if ( db:exists( $database ) )
     then if( $doc )
@@ -147,17 +153,24 @@ declare function doc:create( $database, $uri, $json ) {
             ( if ($a//_id) then () else 
             <_id  type="string">{$uri}</_id>) ) 
         let $revFromId := ( $jsonWithId//_rev ) [1]
+        let $_ := xdmp:log($doc)
+        let $_ := xdmp:log($revFromId)
         let $jsonWithRevs := if ($revFromId)
           then mem:node-replace( $revFromId, $rev )
           else mem:node-insert-after( ($jsonWithId//_id) [1], $rev ) 
         return text { xdmp:to-json( ( $uri, 
           xdmp:eval( $q, ( xs:QName("uri"), $curi, xs:QName("json"), 
-            $jsonWithRevs/json ) ,
+            $jsonWithRevs/json,
+            xs:QName("fromVersion"), if($revFromId) 
+            then fn:tokenize($revFromId, "-")[1] else "1" ) ,
         <options xmlns="xdmp:eval">
           <database> { xdmp:database( $database ) } </database>
           <isolation>different-transaction</isolation>
         </options> ) ) ) } }
-      catch ( $e ) { xdmp:log($e), h:errorFor( map:get( $m, '500' ) ) } 
+      catch ( $e ) { xdmp:log($e), 
+        if($e//*:name="FAC-CONFLICT")
+        then h:errorFor( map:get( $m, '409' ) )
+        else h:errorFor( map:get( $m, '500' ) ) } 
     else h:errorFor( map:get( $m, '400' ) )
     else h:errorFor( map:get( $m, '404' ) ) } ;
 
