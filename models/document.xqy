@@ -153,8 +153,6 @@ declare function doc:create( $database, $uri, $json ) {
             ( if ($a//_id) then () else 
             <_id  type="string">{$uri}</_id>) ) 
         let $revFromId := ( $jsonWithId//_rev ) [1]
-        let $_ := xdmp:log($doc)
-        let $_ := xdmp:log($revFromId)
         let $jsonWithRevs := if ($revFromId)
           then mem:node-replace( $revFromId, $rev )
           else mem:node-insert-after( ($jsonWithId//_id) [1], $rev ) 
